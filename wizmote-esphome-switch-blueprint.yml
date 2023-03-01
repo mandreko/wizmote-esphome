@@ -1,0 +1,122 @@
+blueprint:
+  name: ESPHome Wizmote Receiver
+  domain: automation
+  source_url: https://raw.githubusercontent.com/mandreko/wizmote-esphome/main/wizmote-esphome-switch-blueprint.yml
+  input:
+    remote:
+      name: WizMote Mac address
+      description: Mac address of the WizMote can be found by watching for
+        the 'esphome.wizmote_choose' or 'esphome.wizmote_action' events
+        as you press a button.
+      selector:
+        text:
+    # brightness_dim:
+    #   name: Brightness when moon button pressed
+    #   selector:
+    #     number:
+    #       min: 1
+    #       max: 100
+    #       unit_of_measurement: "%"
+    # brightness_step:
+    #   name: Brightness step when pressing or holding dimmer buttons
+    #   selector:
+    #     number:
+    #       min: 1
+    #       max: 50
+    #       unit_of_measurement: "%"
+    switch_one:
+      name: Switch 1
+      description: The switch to control after pressing 1
+      selector:
+        target:
+          entity:
+            domain: switch
+    switch_two:
+      name: Switch 2
+      description: The switch to control after pressing 2
+      selector:
+        target:
+          entity:
+            domain: switch
+    switch_three:
+      name: Switch 3
+      description: The switch to control after pressing 3
+      selector:
+        target:
+          entity:
+            domain: switch
+    switch_four:
+      name: Switch 4
+      description: The switch to control after pressing 4
+      selector:
+        target:
+          entity:
+            domain: switch
+
+mode: restart
+
+trigger:
+  platform: event
+  event_type: esphome.wizmote_choose
+  event_data:
+    mac: !input "remote"
+
+action:
+  - variables:
+      button: "{{ trigger.event.data.button | int }}"
+      #brightness_step: !input brightness_step
+      switch_one: !input switch_one
+      switch_two: !input switch_two
+      switch_three: !input switch_three
+      switch_four: !input switch_four
+      switch: "\n{% if button == 1 %}\n \
+        \ {{ switch_one }}\n \
+        \ {% elif button == 2 %}\n \
+        \ {{ switch_two }}\n \
+        \ {% elif button == 3 %}\n \
+        \ {{ switch_three }}\n \
+        \ {% elif button == 4 %}\n \
+        \ {{ switch_four }}\n \
+        \ {% endif %}\n"
+  - repeat:
+      until:
+        - "{{ wait.trigger == none }}"
+      sequence:
+        - wait_for_trigger:
+            - platform: event
+              event_type: esphome.wizmote_action
+          continue_on_timeout: false
+          timeout: 00:00:05
+        - choose:
+            - conditions:
+                - "{{ wait.trigger.event.data.button | int == 1 }}"
+              sequence:
+                - service: switch.turn_on
+                  target: "{{ switch }}"
+            - conditions:
+                - "{{ wait.trigger.event.data.button | int == 2 }}"
+              sequence:
+                - service: switch.turn_off
+                  target: "{{ switch }}"
+            # - conditions:
+            #     - "{{ wait.trigger.event.data.button | int == 3 }}"
+            #   sequence:
+            #     - service: switch.turn_on
+            #       target: "{{ switch }}"
+            #       data:
+            #         brightness_pct: !input brightness_dim
+            # - conditions:
+            #     - "{{ wait.trigger.event.data.button | int == 8 }}"
+            #   sequence:
+            #     - service: switch.turn_on
+            #       target: "{{ switch }}"
+            #       data:
+            #         brightness_step_pct: "-{{ brightness_step }}"
+            # - conditions:
+            #     - "{{ wait.trigger.event.data.button | int == 9 }}"
+            #   sequence:
+            #     - service: switch.turn_on
+            #       target: "{{ switch }}"
+            #       data:
+            #         brightness_step_pct: "{{ brightness_step }}"
+
